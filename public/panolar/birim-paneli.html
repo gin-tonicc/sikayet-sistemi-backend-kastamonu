@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Birim Paneli · Maltepe Belediyesi</title>
+<title>Birim Paneli · Kastamonu Belediyesi</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
@@ -169,7 +169,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
    göreceğini veritabanındaki RLS politikaları belirler.
    ===================================================================== */
 const AYAR = {
-  url: 'https://ylclsakyaztnztwllhti.supabase.co',
+  url: 'https://bjdgwefzqzassnilvvyn.supabase.co',
   anon: 'sb_publishable_-HcJBIhhuim_k0poCPr_Zg_DGU7UVuf',
 };
 
@@ -196,7 +196,7 @@ sb.auth.onAuthStateChange((olay) => {
 function girisEkrani(hata) {
   document.getElementById('uygulama').innerHTML = `
     <div class="giris-sahne"><div class="giris">
-      <div class="kas">Maltepe Belediyesi</div>
+      <div class="kas">Kastamonu Belediyesi</div>
       <h1>Birim Paneli</h1>
       <p>Size gelen işleri buradan görür, işleme alır ve tamamlarsınız.
          Belediye e-posta adresiniz ve şifrenizle giriş yapın.</p>
@@ -267,7 +267,7 @@ function ciz() {
 
   document.getElementById('uygulama').innerHTML = `
     <div class="tepe">
-      <div><div class="kas">Maltepe Belediyesi</div><div class="marka">Birim Paneli</div></div>
+      <div><div class="kas">Kastamonu Belediyesi</div><div class="marka">Birim Paneli</div></div>
       <div class="kim"><b>${kacir(PROFIL.ad_soyad ?? '')}</b> ·
         ${kacir(PROFIL.birimler?.ad ?? 'Birim atanmamış')}
         <button class="btn" style="padding:8px 14px;min-height:auto;font-size:13px" id="cikis">Çıkış yap</button></div>
