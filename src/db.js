@@ -71,6 +71,22 @@ export const db = {
       .eq('id', vatandasId), 'kvkkOnayla');
   },
 
+  // Vatandaşın kendi verdiği iletişim numarası (kanal kimliğinden farklı —
+  // Telegram'da kanal kimliği "tg:123456" şeklindedir, gerçek telefon değil).
+  async iletisimTelefonuKaydet(vatandasId, telefon) {
+    kontrol(await sb.from('vatandaslar')
+      .update({ iletisim_telefon: telefon }).eq('id', vatandasId),
+      'iletisimTelefonuKaydet');
+  },
+
+  // Vatandaş sadece sokak adı verdiğinde mahalleyi otomatik bulur.
+  // sokaklar tablosu boşsa null döner, sistem yine sorunsuz çalışır.
+  async sokaktanMahalleBul(sokakAdi) {
+    const data = kontrol(await sb.rpc('sokaktan_mahalle_bul', { p_sokak: sokakAdi }),
+      'sokaktanMahalleBul');
+    return data ?? null;
+  },
+
   async mesajVarMi(waMesajId) {
     const data = kontrol(await sb.from('konusmalar').select('id')
       .eq('wa_mesaj_id', waMesajId).maybeSingle(), 'mesajVarMi');
