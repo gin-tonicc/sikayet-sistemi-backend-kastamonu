@@ -24,6 +24,7 @@ h1,h2,h3{font-family:'Oswald',sans-serif}
 button,select,input,textarea{font:inherit}
 :focus-visible{outline:3px solid var(--orta);outline-offset:2px}
 
+/* Büyük, parmakla basılabilir düğmeler — sahada telefon/tablet kullanımı için */
 .btn{font-family:'Oswald',sans-serif;font-size:15px;font-weight:500;letter-spacing:.01em;
   padding:13px 20px;border-radius:4px;border:1.5px solid var(--hair);background:var(--bone);
   color:var(--ink);cursor:pointer;min-height:46px}
@@ -37,6 +38,18 @@ input[type=text],input[type=email],input[type=password],select,textarea{
   width:100%;font-size:16px}
 textarea{min-height:90px;resize:vertical}
 
+/* ---------- giriş ---------- */
+.giris-sahne{min-height:100vh;background:var(--marine-900);display:flex;align-items:center;
+  justify-content:center;padding:20px}
+.giris{max-width:400px;width:100%;background:var(--bone);border-radius:4px;padding:32px 28px}
+.giris .kas{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--orta);margin-bottom:6px}
+.giris h1{font-size:24px;font-weight:500;color:var(--marine-900);margin-bottom:8px}
+.giris p{font-size:14.5px;color:var(--ink-soft);margin-bottom:22px}
+.giris label{font-size:13px;font-weight:600;color:var(--ink);display:block;margin:14px 0 6px}
+.hata{background:var(--acil-bg);color:var(--acil);font-size:14px;padding:12px 14px;border-radius:4px;
+  margin-top:14px;font-weight:500}
+
 /* ---------- uygulama iskeleti ---------- */
 .tepe{background:var(--marine-900);color:#fff;padding:16px 20px;display:flex;
   justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
@@ -44,18 +57,23 @@ textarea{min-height:90px;resize:vertical}
   color:var(--orta)}
 .tepe .marka{font-family:'Oswald',sans-serif;font-weight:500;font-size:19px;text-transform:uppercase;
   letter-spacing:.01em}
+.tepe .kim{font-size:13.5px;color:var(--teal-soft);text-align:right;display:flex;align-items:center;
+  gap:12px;flex-wrap:wrap}
+.tepe .kim b{color:#fff;font-weight:600}
 
-/* ---------- sağ üstteki slot seçici (giriş ekranının yerine) ---------- */
-.slot-secici{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.slot-etiket{font-size:12px;color:var(--teal-soft);text-transform:uppercase;
-  letter-spacing:.1em;font-family:'Oswald',sans-serif;margin-right:2px}
-.slot-btn{font-family:'Oswald',sans-serif;font-size:13.5px;letter-spacing:.02em;white-space:nowrap;
-  padding:9px 14px;border-radius:4px;border:1.5px solid var(--rule);background:transparent;
-  color:var(--teal-soft);cursor:pointer;min-height:38px}
+/* sağ üstteki slot düğmeleri — giriş ekranının yerine geçer */
+.slot-btn{font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:.02em;white-space:nowrap;
+  padding:7px 12px;border-radius:4px;border:1.5px solid var(--rule);background:transparent;
+  color:var(--teal-soft);cursor:pointer;min-height:34px}
 .slot-btn:hover{border-color:var(--teal-soft);color:#fff}
 .slot-btn[aria-current=true]{background:var(--bone);color:var(--marine-900);
   border-color:var(--bone);font-weight:600}
-.slot-btn.yonetici[aria-current=true]{background:var(--orta);color:#fff;border-color:var(--orta)}
+.slot-btn.yon[aria-current=true]{background:var(--orta);color:#fff;border-color:var(--orta)}
+
+/* takip numarası arama satırı */
+.ara-satir{display:flex;gap:9px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+.ara-satir input{max-width:260px}
+.ara-not{font-size:13.5px;color:var(--acil);font-weight:500}
 
 .sekmeler{display:flex;gap:2px;background:var(--marine-800);padding:0 20px;overflow-x:auto}
 .sekmeler button{background:none;border:none;padding:14px 18px;font-family:'Oswald',sans-serif;
@@ -64,12 +82,6 @@ textarea{min-height:90px;resize:vertical}
 .sekmeler button[aria-current=page]{color:#fff;border-bottom-color:var(--orta)}
 
 .kabuk{max-width:1100px;margin:0 auto;padding:22px 20px 70px}
-
-/* ---------- takip numarası arama ---------- */
-.arama-kutu{background:var(--marine-800);padding:12px 20px;display:flex;gap:10px;
-  align-items:center;flex-wrap:wrap}
-.arama-kutu input{max-width:280px}
-.arama-sonuc{font-size:13.5px;color:var(--acil-bg)}
 
 /* ---------- basit özet kartları ---------- */
 .ozet-satir{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
@@ -110,7 +122,7 @@ textarea{min-height:90px;resize:vertical}
 .bos{padding:50px 20px;text-align:center;color:var(--ink-soft);font-size:16px;background:var(--bone);
   border:1px dashed var(--hair);border-radius:4px}
 
-/* ---------- yönetici tablosu (sadece Yönetici Panosu slotunda) ---------- */
+/* ---------- yönetici tablosu (sadece triyaj/ust_yonetim/sistem_yoneticisi görür) ---------- */
 table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--bone)}
 th{text-align:left;font-family:'Oswald',sans-serif;font-weight:500;font-size:12.5px;
   text-transform:uppercase;letter-spacing:.04em;color:var(--marine-900);padding:11px 12px;
@@ -154,7 +166,6 @@ td.sag,th.sag{text-align:right}
 @media(max-width:640px){
   .bilgi{grid-template-columns:1fr}
   .bilgi span{margin-top:8px}
-  .arama-kutu input{max-width:none;flex:1}
 }
 </style>
 </head>
@@ -168,11 +179,11 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 /* =====================================================================
    AYAR — Supabase panelinden alınır (Project Settings > API)
-   DEMO SÜRÜMÜ: giriş ekranı yok, publishable anahtar tarayıcıda durur.
-   Kimin hangi kaydı göreceğini veritabanındaki RLS politikaları belirler.
+   ANON anahtarı tarayıcıda durur; bu güvenlidir çünkü hangi kaydı kimin
+   göreceğini veritabanındaki RLS politikaları belirler.
    ===================================================================== */
 const AYAR = {
-  url:  'https://bjdgwefzqzassnilvvyn.supabase.co',
+  url: 'https://bjdgwefzqzassnilvvyn.supabase.co',
   anon: 'sb_publishable_X8H7wHFr8KcdIoJc-EFoWw_EnMKXmeO',
 };
 
@@ -185,19 +196,40 @@ const DURUM_ADI = {
 };
 const ACIK_DURUMLAR = ['triyaj', 'yeni', 'atandi', 'islemde', 'beklemede', 'tekrar_acildi'];
 
-/* SEC: seçili slot. 'yonetici' ya da bir birim id'si.
-   Sağ üstteki düğmelerden değişir — giriş yapan kişiye göre değil. */
-let SEC = 'yonetici', SAYFA = 'panos', KAYITLAR = [], BIRIMLER = [], KANAL = null;
+/* SEC: sağ üstten seçilen slot. 'yonetici' ya da bir birim id'si. */
+let SEC = 'yonetici', SAYFA = 'panos', KAYITLAR = [], BIRIMLER = [], KANAL = null, HATA = '';
 
-await baslat();
+/* ---------------- başlangıç (giriş yok — demo) ---------------- */
+
+baslat();
 
 async function baslat() {
-  const { data: birimler } = await sb.from('birimler').select('id, ad, kisa_ad').eq('aktif', true).order('ad');
-  BIRIMLER = birimler ?? [];
   await kayitlariGetir();
+
+  // Birim listesi normalde birimler tablosundan gelir. O tabloya erişim
+  // yoksa (RLS/izin), kayıtların içindeki birim bilgisinden türetiriz —
+  // böylece slot düğmeleri her hâlükârda dolu gelir.
+  const { data: birimler, error } = await sb.from('birimler')
+    .select('id, ad, kisa_ad').eq('aktif', true).order('ad');
+
+  if (birimler?.length) {
+    BIRIMLER = birimler;
+  } else {
+    const harita = new Map();
+    for (const k of KAYITLAR) {
+      if (k.birim_id && k.birimler?.ad && !harita.has(k.birim_id)) {
+        harita.set(k.birim_id, { id: k.birim_id, ad: k.birimler.ad, kisa_ad: k.birimler.kisa_ad });
+      }
+    }
+    BIRIMLER = [...harita.values()].sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+    if (error) HATA = 'Birim listesi okunamadı (' + error.message + ') — birimler kayıtlardan türetildi.';
+    else if (!BIRIMLER.length && !KAYITLAR.length) HATA = 'Hiç kayıt gelmedi. Veritabanı izinlerini kontrol edin.';
+  }
+
   canliBagla();
   ciz();
 }
+
 
 /* ---------------- veri ---------------- */
 
@@ -227,7 +259,6 @@ function canliBagla() {
 
 function ciz() {
   const yonetici = SEC === 'yonetici';
-  const birim = BIRIMLER.find(b => b.id === SEC);
   const sekmeler = [
     ['gelen', 'Bana gelen işler'],
     ['bekleyen', 'Onay bekleyenler'],
@@ -239,18 +270,11 @@ function ciz() {
   document.getElementById('uygulama').innerHTML = `
     <div class="tepe">
       <div><div class="kas">Kastamonu Belediyesi</div><div class="marka">Birim Paneli</div></div>
-      <div class="slot-secici">
-        <span class="slot-etiket">Görünüm:</span>
-        <button class="slot-btn yonetici" data-slot="yonetici" ${yonetici ? 'aria-current="true"' : ''}>Yönetici</button>
+      <div class="kim">
+        <button class="slot-btn yon" data-slot="yonetici" ${yonetici ? 'aria-current="true"' : ''}>Yönetici</button>
         ${BIRIMLER.map(b => `<button class="slot-btn" data-slot="${b.id}"
           ${b.id === SEC ? 'aria-current="true"' : ''}>${kacir(b.kisa_ad ?? b.ad)}</button>`).join('')}
       </div>
-    </div>
-    <div class="arama-kutu">
-      <span class="slot-etiket">Takip no ara:</span>
-      <input type="text" id="aramaNo" placeholder="Örn. K26-000012" class="mono">
-      <button class="btn" id="aramaBtn" style="min-height:38px;padding:8px 16px">Ara</button>
-      <span class="arama-sonuc" id="aramaSonuc"></span>
     </div>
     <div class="sekmeler">
       ${sekmeler.map(([k, ad]) => `<button data-s="${k}" ${k === SAYFA ? 'aria-current="page"' : ''}>${ad}</button>`).join('')}
@@ -259,46 +283,54 @@ function ciz() {
       SAYFA === 'panos' ? sayfaPanos() :
       SAYFA === 'triyaj' ? liste(KAYITLAR.filter(k => k.durum === 'triyaj'), 'Yönlendirme kutusu',
         'Yapay zekanın hangi birime ait olduğundan emin olamadığı işler. Doğru birime siz yönlendirirsiniz.') :
-      SAYFA === 'bekleyen' ? liste(birimliKayitlar().filter(k => ['beklemede', 'cozuldu'].includes(k.durum)),
+      SAYFA === 'bekleyen' ? liste(benimKayitlarim().filter(k => ['beklemede', 'cozuldu'].includes(k.durum)),
         'Onay bekleyenler', 'Tamamlandı diye işaretlendi, vatandaşın onaylaması bekleniyor.') :
-      SAYFA === 'kapali' ? liste(birimliKayitlar().filter(k => ['kapandi', 'reddedildi', 'havale'].includes(k.durum)), 'Biten işler') :
-      liste(birimliKayitlar().filter(k => ACIK_DURUMLAR.includes(k.durum) && k.durum !== 'triyaj'), 'Bana gelen işler')
+      SAYFA === 'kapali' ? liste(benimKayitlarim().filter(k => ['kapandi', 'reddedildi', 'havale'].includes(k.durum)), 'Biten işler') :
+      liste(benimKayitlarim().filter(k => ACIK_DURUMLAR.includes(k.durum) && k.durum !== 'triyaj'), 'Bana gelen işler')
     }</div>`;
 
-  document.querySelectorAll('.slot-btn').forEach(b =>
-    b.onclick = () => { SEC = b.dataset.slot; SAYFA = SEC === 'yonetici' ? 'panos' : 'gelen'; ciz(); });
   document.querySelectorAll('.sekmeler button').forEach(b =>
     b.onclick = () => { SAYFA = b.dataset.s; ciz(); });
+  document.querySelectorAll('.slot-btn').forEach(b =>
+    b.onclick = () => { SEC = b.dataset.slot; SAYFA = SEC === 'yonetici' ? 'panos' : 'gelen'; ciz(); });
+  const araBtn = document.getElementById('araBtn');
+  if (araBtn) {
+    araBtn.onclick = araYap;
+    document.getElementById('araNo').onkeydown = e => { if (e.key === 'Enter') araYap(); };
+  }
   document.querySelectorAll('.is-kart[data-id]').forEach(b =>
     b.onclick = () => detayAc(b.dataset.id));
-
-  document.getElementById('aramaBtn').onclick = aramaYap;
-  document.getElementById('aramaNo').onkeydown = e => { if (e.key === 'Enter') aramaYap(); };
 }
 
-function birimliKayitlar() {
+function benimKayitlarim() {
   return SEC === 'yonetici' ? KAYITLAR : KAYITLAR.filter(k => k.birim_id === SEC);
 }
 
-function aramaYap() {
-  const girilen = document.getElementById('aramaNo').value.trim().toLocaleUpperCase('tr').replace(/\s/g, '');
-  const sonucAlani = document.getElementById('aramaSonuc');
+function araYap() {
+  const girilen = document.getElementById('araNo').value.trim().toLocaleUpperCase('tr').replace(/\s/g, '');
+  const not = document.getElementById('araNot');
   if (!girilen) return;
   const bulunan = KAYITLAR.find(k =>
     (k.takip_no ?? '').toLocaleUpperCase('tr').replace(/\s/g, '') === girilen);
-  if (bulunan) { sonucAlani.textContent = ''; detayAc(bulunan.id); }
-  else sonucAlani.textContent = 'Bu numarayla kayıt bulunamadı.';
+  if (bulunan) { not.textContent = ''; detayAc(bulunan.id); }
+  else not.textContent = 'Bu numarayla kayıt bulunamadı.';
 }
 
 function yasSinifi(gun) { return gun >= 14 ? 'uzun' : gun >= 5 ? 'orta' : 'kisa'; }
 
 function liste(kayitlar, baslik, aciklama) {
-  const acik = birimliKayitlar().filter(k => ACIK_DURUMLAR.includes(k.durum));
+  const acik = benimKayitlarim().filter(k => ACIK_DURUMLAR.includes(k.durum));
   const yaslar = acik.map(k => yasGun(k.olusturma));
   const acilSayi = acik.filter(k => k.acil).length;
   const enEski = yaslar.length ? Math.max(...yaslar) : 0;
 
   return `
+  ${HATA ? `<div class="uyari">${kacir(HATA)}</div>` : ''}
+  <div class="ara-satir">
+    <input type="text" id="araNo" class="mono" placeholder="Takip numarası ara — örn. K26-000012">
+    <button class="btn" id="araBtn" style="min-height:40px;padding:9px 18px">Ara</button>
+    <span class="ara-not" id="araNot"></span>
+  </div>
   <div class="ozet-satir">
     <div class="ozet"><div class="et">Elinizde kaç iş var</div>
       <div class="deger">${acik.length}</div><div class="alt">şu an açık</div></div>
@@ -326,8 +358,8 @@ function satirHTML(k) {
     <div class="is-alt">
       <span class="mono">${kacir(k.takip_no ?? '')}</span>
       <span>· ${kacir(k.mahalle_metin ?? 'Mahalle belirtilmemiş')}</span>
-      ${k.adres ? `<span>· ${kacir(k.adres)}</span>` : ''}
       ${SEC === 'yonetici' && k.birimler?.ad ? `<span>· ${kacir(k.birimler.kisa_ad ?? k.birimler.ad)}</span>` : ''}
+      ${k.adres ? `<span>· ${kacir(k.adres)}</span>` : ''}
       ${fotoSayisi ? `<span class="foto-isareti">📷 ${fotoSayisi} fotoğraf</span>` : ''}
       ${k.destekleyen_sayisi > 1 ? `<span>· aynı sorunu bildiren ${k.destekleyen_sayisi} kişi</span>` : ''}
     </div>
@@ -385,7 +417,6 @@ async function detayAc(id) {
       <div class="bilgi">
         <span>Durum</span><b>${DURUM_ADI[k.durum] ?? k.durum}</b>
         <span>Konu</span><div>${kacir(k.kategoriler?.ad ?? '—')}</div>
-        <span>Birim</span><div>${kacir(k.birimler?.ad ?? 'Henüz atanmamış')}</div>
         <span>Yer</span><div>${kacir(k.mahalle_metin ?? '—')} ${kacir(k.adres ?? '')}</div>
         <span>Ne zaman geldi</span><div>${new Date(k.olusturma).toLocaleString('tr-TR')}
           (${yasGun(k.olusturma).toFixed(0)} gün önce)</div>
@@ -462,11 +493,10 @@ async function durumIsle(k, durum) {
 
   if (durum === 'cozuldu') {
     await sb.from('cozum_raporlari').insert({ sikayet_id: k.id, aciklama: not });
-    await sb.from('sikayet_hareketleri').insert({
-      sikayet_id: k.id, aktor: 'kullanici', islem: 'cozuldu', not_metni: not });
   } else if (not) {
     await sb.from('sikayet_hareketleri').insert({
-      sikayet_id: k.id, aktor: 'kullanici', islem: 'not_eklendi', not_metni: not });
+      sikayet_id: k.id, aktor: 'kullanici',
+      islem: 'not_eklendi', not_metni: not });
   }
   modalKapat(); await kayitlariGetir(); ciz();
 }
@@ -475,7 +505,8 @@ async function iadeEt(k) {
   const not = document.getElementById('notMetni')?.value?.trim() ?? '';
   if (!not) return alert('Bu işin neden size ait olmadığını kısaca yazmanız gerekiyor.');
   await sb.from('sikayet_hareketleri').insert({
-    sikayet_id: k.id, aktor: 'kullanici', islem: 'iade', not_metni: not });
+    sikayet_id: k.id, aktor: 'kullanici',
+    islem: 'iade', not_metni: not });
   const { error } = await sb.from('sikayetler')
     .update({ durum: 'triyaj', birim_id: null }).eq('id', k.id);
   if (error) return alert(error.message);
@@ -489,7 +520,8 @@ async function yonlendir(k) {
     .update({ birim_id: birimId, durum: 'yeni' }).eq('id', k.id);
   if (error) return alert(error.message);
   await sb.from('sikayet_hareketleri').insert({
-    sikayet_id: k.id, aktor: 'kullanici', islem: 'yonlendirildi' });
+    sikayet_id: k.id, aktor: 'kullanici',
+    islem: 'yonlendirildi' });
   modalKapat(); await kayitlariGetir(); ciz();
 }
 
