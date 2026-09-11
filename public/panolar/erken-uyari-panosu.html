@@ -976,7 +976,12 @@ KURALLAR
 const CONFIG = {
  veriUrl: 'https://sikayet-sistemi-backend-kastamonu-production.up.railway.app/veri/csv?anahtar=kastamonu-panel-2026',
   yenilemeDakika: 15,
-  yorumUrl: '',
+  // YZ yorumu artık sunucudan geliyor (analiz.js → /analiz/yorum).
+  // Anthropic anahtarı Railway'de kalıyor, tarayıcıya hiç inmiyor.
+  yorumUrl: 'https://sikayet-sistemi-backend-kastamonu-production.up.railway.app/analiz/yorum',
+  // Railway → Variables → PANEL_ANAHTARI ile BİREBİR aynı olmalı
+  // (veriUrl'deki ?anahtar= değeriyle de aynı olmalı).
+  panelAnahtari: 'kastamonu-panel-2026',
 };
 
 /* ── İstanbul şematik ilçe yerleşimi (kolon, satır) ──────────────
@@ -1048,8 +1053,6 @@ document.getElementById('dosya').addEventListener('change', e => {
       error: err => durumYaz('Okunamadı: ' + err.message, 'var(--amber)') });
   }
 });
-
-}
 
 let YENILEME_SAYACI = null;
 
@@ -1235,14 +1238,14 @@ function ekranKonular() {
             ${kacir(KATEGORI || 'Tüm konular')}</div>
           <div style="font-size:11.5px;color:var(--ink-soft);margin-top:3px">
             ${ISTANBUL ? 'Karoya bas → o ilçeyi aç. Şematik yerleşim, gerçek sınır değil.'
-              : (KASTAMONU_MAHALLE.size && bolgeler.some(b => KASTAMONU_MAHALLE.has(b.ad)))
+              : bolgeler.some(b => KASTAMONU_ANAHTAR.has(mahalleAnahtari(b.ad)))
                 ? 'Karoya bas → o mahalleyi aç. Şematik yerleşim (yaklaşık konum), gerçek sınır değil.'
               : 'Karoya bas → o mahalleyi aç. Yoğunluk sırasına göre dizilmiştir, coğrafi konum değildir.'}</div>
         </div>
         ${isiSkalasi(bolgeler[0]?.deger ?? 0, birim)}
       </div>
       ${ISTANBUL ? karoHarita(bolgeler, birim)
-        : (KASTAMONU_MAHALLE.size && bolgeler.some(b => KASTAMONU_MAHALLE.has(b.ad)))
+        : bolgeler.some(b => KASTAMONU_ANAHTAR.has(mahalleAnahtari(b.ad)))
           ? karoKastamonu(bolgeler, birim)
         : karoIzgara(bolgeler, birim)}
     </div>
@@ -1531,8 +1534,25 @@ const KASTAMONU_GRID = {
 };
 const KASTAMONU_MAHALLE = new Set(Object.keys(KASTAMONU_GRID));
 
+/* Mahalle adını eşleştirme için sadeleştirir:
+   "Kuzeykent Mahallesi", "Kuzeykent", "KUZEYKENT MAH." → "kuzeykent"
+   Böylece kayıt mahalle tablosuna bağlıysa da (tam ad), yapay zekanın
+   yazdığı ham metinse de (kısa ad) aynı karoya düşer. */
+function mahalleAnahtari(ad) {
+  return sadelestir(String(ad ?? '').replace(/\s*(mahallesi|mahalle|mah\.?|mh\.?)\s*$/i, ''));
+}
+const KASTAMONU_ANAHTAR = new Map(
+  Object.keys(KASTAMONU_GRID).map(ad => [mahalleAnahtari(ad), ad]));
+
 function karoKastamonu(bolgeler, birim) {
-  const deger = {}; bolgeler.forEach(b => { deger[b.ad] = b.deger; });
+  // Veriden gelen adı sadeleştirip ızgara anahtarıyla eşleştiriyoruz.
+  const deger = {}, gercekAd = {};
+  bolgeler.forEach(b => {
+    const k = KASTAMONU_ANAHTAR.get(mahalleAnahtari(b.ad));
+    if (!k) return;
+    deger[k] = (deger[k] ?? 0) + b.deger;
+    gercekAd[k] = gercekAd[k] ?? b.ad;   // tıklayınca süzmek için orijinal ad
+  });
   const KARO = 92, BOSLUK = 5, KOL = 6, SATIR = 6;
   const G = KARO + BOSLUK, W = KOL * G, H = SATIR * G;
   const maks = Math.max(...Object.values(deger), 0) || 1;
@@ -1542,9 +1562,10 @@ function karoKastamonu(bolgeler, birim) {
          role="img" aria-label="Kastamonu merkez mahalle bazlı talep yoğunluğu">
       ${Object.keys(KASTAMONU_GRID).map(mahalle => {
         const [c, r] = KASTAMONU_GRID[mahalle], x = c * G, y = r * G;
-        const v = deger[mahalle] ?? 0, t = v / maks, koyu = t > 0.5, aktif = BOLGE === mahalle;
+        const v = deger[mahalle] ?? 0, t = v / maks, koyu = t > 0.5;
+        const tiklanacak = gercekAd[mahalle] ?? mahalle, aktif = BOLGE === tiklanacak;
         const kisa = mahalle.length > 12 ? mahalle.slice(0, 11) + '…' : mahalle;
-        return `<g class="tile" data-bolge="${kacir(mahalle)}" style="cursor:pointer">
+        return `<g class="tile" data-bolge="${kacir(tiklanacak)}" style="cursor:pointer">
           <title>${kacir(mahalle)}: ${birim === '/100b' ? v.toFixed(1) : say(v)} ${birim}</title>
           <rect x="${x}" y="${y}" width="${KARO}" height="${KARO}" fill="${isiRengi(t)}"
             stroke="${aktif ? 'var(--marine-900)' : 'rgba(20,24,28,.14)'}" stroke-width="${aktif ? 3 : 1}"/>
@@ -1914,8 +1935,9 @@ async function yorumGetir() {
     let metin;
     if (CONFIG.yorumUrl) {
       const r = await fetch(CONFIG.yorumUrl, { method:'POST',
-        headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ ozet }) });
-      if (!r.ok) throw new Error('Sunucu ' + r.status);
+        headers:{ 'Content-Type':'application/json', 'x-panel-anahtari': CONFIG.panelAnahtari },
+        body: JSON.stringify({ ozet }) });
+      if (!r.ok) throw new Error('Sunucu ' + r.status + (r.status === 401 ? ' — panelAnahtari yanlış' : ''));
       metin = (await r.json()).yorum;
     } else {
       const anahtar = document.getElementById('apiAnahtar').value.trim();
