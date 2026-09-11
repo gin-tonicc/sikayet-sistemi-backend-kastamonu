@@ -214,34 +214,35 @@ app.addHook('onRequest', async (req, reply) => {
 });
 
 // ---------------------------------------------------------------------
-// 3.5 Panolar — şifreli statik ekranlar (yönetime gösterilen inceleme
-//     ekranları: erken uyarı panosu, başkan ekranı). Birim paneli bu
-//     kapsamda değil, o kendi Supabase girişini kullanıyor.
-//     Tarayıcı /panolar/... adresine gidince otomatik şifre kutusu açar.
+// 3.5 Panolar — DEMO MODU: şifre kapısı kaldırıldı.
+//     Birim paneli, erken uyarı panosu ve başkan ekranı doğrudan açılır.
+//     Sunum sırasında kimsenin şifre girmesi gerekmez.
+//
+//     ⚠ Gerçek kullanıma geçerken bu bölüm geri açılmalıdır — o zaman
+//     PANO_KULLANICI / PANO_SIFRE değişkenleri yeniden devreye girer.
+//     Eski kod aşağıda yorum satırı olarak duruyor, silinmedi.
 // ---------------------------------------------------------------------
-app.addHook('onRequest', async (req, reply) => {
-  if (!req.url.startsWith('/panolar')) return;
-  // Birim paneli günlük kullanım için — kendi Supabase girişi zaten var,
-  // paylaşılan şifreyi ikinci bir kapı olarak istemiyoruz.
-  if (req.url.startsWith('/panolar/birim-paneli.html')) return;
-
-  const beklenenKullanici = process.env.PANO_KULLANICI;
-  const beklenenSifre = process.env.PANO_SIFRE;
-  if (!beklenenKullanici || !beklenenSifre) {
-    app.log.error('PANO_KULLANICI / PANO_SIFRE tanımlı değil — panolar kapalı');
-    return reply.code(503).send('Panolar şu an yapılandırılmamış');
-  }
-
-  const gelen = req.headers.authorization ?? '';
-  const beklenen = 'Basic ' + Buffer.from(`${beklenenKullanici}:${beklenenSifre}`).toString('base64');
-  const gecerli = gelen.length === beklenen.length &&
-    crypto.timingSafeEqual(Buffer.from(gelen), Buffer.from(beklenen));
-
-  if (!gecerli) {
-    reply.header('WWW-Authenticate', 'Basic realm="Maltepe Panolar"');
-    return reply.code(401).send('Yetkisiz');
-  }
-});
+// app.addHook('onRequest', async (req, reply) => {
+//   if (!req.url.startsWith('/panolar')) return;
+//   if (req.url.startsWith('/panolar/birim-paneli.html')) return;
+//
+//   const beklenenKullanici = process.env.PANO_KULLANICI;
+//   const beklenenSifre = process.env.PANO_SIFRE;
+//   if (!beklenenKullanici || !beklenenSifre) {
+//     app.log.error('PANO_KULLANICI / PANO_SIFRE tanımlı değil — panolar kapalı');
+//     return reply.code(503).send('Panolar şu an yapılandırılmamış');
+//   }
+//
+//   const gelen = req.headers.authorization ?? '';
+//   const beklenen = 'Basic ' + Buffer.from(`${beklenenKullanici}:${beklenenSifre}`).toString('base64');
+//   const gecerli = gelen.length === beklenen.length &&
+//     crypto.timingSafeEqual(Buffer.from(gelen), Buffer.from(beklenen));
+//
+//   if (!gecerli) {
+//     reply.header('WWW-Authenticate', 'Basic realm="Kastamonu Panolar"');
+//     return reply.code(401).send('Yetkisiz');
+//   }
+// });
 
 app.register(fastifyStatic, {
   root: path.join(__dirname, '..', 'public', 'panolar'),
