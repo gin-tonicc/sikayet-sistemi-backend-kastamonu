@@ -1511,15 +1511,23 @@ function bolgeListesiTum() {
    yaklaşıklanmıştır, ölçekli bir imar/sınır haritası değildir — sadece
    genel yön doğru olacak şekilde bir "kart" düzeni sağlar.
    ===================================================================== */
+// ⚠ Bu isimler veritabanındaki mahalleler.ad ile BİREBİR aynı olmalı
+// ("Mahallesi" son eki dahil) — CSV'den gelen 'Mahalle' sütunu bu isimle
+// eşleşmezse ızgara sessizce eski (yoğunluk sıralı) görünüme düşer.
 const KASTAMONU_GRID = {
-  'Kuzeykent':            [4, 0],
-  'İnönü':                [3, 1], 'Mehmet Akif Ersoy': [5, 1], 'Candaroğulları': [1, 1],
-  'Saraçlar':             [0, 2], 'Aktekke':      [1, 2], 'Kırkçeşme': [2, 2],
-  'Cebrail':              [3, 2], 'Hisarardı':    [4, 2], 'İsmailbey': [5, 2],
-  'Honsalar':             [0, 3], 'Akmescit':     [1, 3], 'İsfendiyar': [2, 3],
-  'Hepkebirler':          [3, 3], 'Topçuoğlu':    [4, 3], 'Beyçelebi':  [5, 3],
-  'Esentepe':             [2, 4], 'Yavuzselim':   [3, 4],
-  'Atabeygazi':           [1, 5], 'Budamış':      [4, 5],
+  'Kuzeykent Mahallesi':            [4, 0],
+  'İnönü Mahallesi':                [3, 1], 'Mehmet Akif Ersoy Mahallesi': [5, 1],
+  'Candaroğulları Mahallesi':       [1, 1],
+  'Saraçlar Mahallesi':             [0, 2], 'Aktekke Mahallesi':      [1, 2],
+  'Kırkçeşme Mahallesi':            [2, 2],
+  'Cebrail Mahallesi':              [3, 2], 'Hisarardı Mahallesi':    [4, 2],
+  'İsmailbey Mahallesi':            [5, 2],
+  'Honsalar Mahallesi':             [0, 3], 'Akmescit Mahallesi':     [1, 3],
+  'İsfendiyar Mahallesi':           [2, 3],
+  'Hepkebirler Mahallesi':          [3, 3], 'Topçuoğlu Mahallesi':    [4, 3],
+  'Beyçelebi Mahallesi':            [5, 3],
+  'Esentepe Mahallesi':             [2, 4], 'Yavuzselim Mahallesi':   [3, 4],
+  'Atabeygazi Mahallesi':           [1, 5], 'Budamış Mahallesi':      [4, 5],
 };
 const KASTAMONU_MAHALLE = new Set(Object.keys(KASTAMONU_GRID));
 
