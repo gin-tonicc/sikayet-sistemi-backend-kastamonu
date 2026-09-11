@@ -9,11 +9,6 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-/**
- * Yapay zeka servisine ULAŞILAMADIĞINDA fırlatılan özel hata.
- * Normal bir "anlayamadım" durumundan ayrılması gerekiyor: birincisinde
- * vatandaşa soru sorarız, ikincisinde kaydı yine de açıp triyaja bırakırız.
- */
 export class YapayZekaErisilemedi extends Error {
   constructor(sebep) {
     super('Yapay zeka servisine ulaşılamadı: ' + sebep);
@@ -24,9 +19,11 @@ export class YapayZekaErisilemedi extends Error {
 const ZAMAN_ASIMI_MS = Number(process.env.AI_ZAMAN_ASIMI_MS ?? 30000);
 const DENEME_SAYISI   = Number(process.env.AI_DENEME_SAYISI ?? 3);
 
-/**
- * Claude çağrısını zaman aşımı ve yeniden denemeyle sarar.
- */
+// Uzun vatandaş mesajlarında model uzun JSON üretiyor ve eski 1000'lik
+// sınırda yanıt YARIDA KESİLİYORDU. Kesilen JSON okunamadığı için sistem
+// "anlayamadım" diyordu — model aslında anlamıştı. Sınır yükseltildi.
+const AZAMI_JETON = Number(process.env.AI_AZAMI_JETON ?? 2000);
+
 async function guvenliCagri(islev, etiket) {
   let sonHata;
 
@@ -41,10 +38,7 @@ async function guvenliCagri(islev, etiket) {
     } catch (hata) {
       sonHata = hata;
       const kod = hata?.status ?? hata?.response?.status;
-
-      // Kalıcı hatalar — tekrar denemenin faydası yok
       if (kod === 401 || kod === 403 || kod === 400) break;
-
       if (deneme < DENEME_SAYISI) {
         await new Promise(r => setTimeout(r, 1000 * 2 ** (deneme - 1)));
       }
@@ -56,13 +50,6 @@ async function guvenliCagri(islev, etiket) {
 
 /**
  * Vatandaşın mesajını analiz eder.
- * @param {object} p
- * @param {Array}   p.gecmis      - önceki mesajlar [{rol, metin}]
- * @param {string}  p.mesaj       - güncel mesaj
- * @param {Array}   p.kategoriler - DB'den gelen aktif kategoriler
- * @param {Array}   p.mahalleler  - DB'den gelen mahalle listesi
- * @param {boolean} p.telefonVar  - vatandaşın iletişim numarası kayıtlı mı
- * @param {boolean} p.telefonSoruldu - bu konuşmada numara bir kez soruldu mu
  */
 export async function analizEt({ gecmis, mesaj, kategoriler, mahalleler,
                                  telefonVar = false, telefonSoruldu = false }) {
@@ -72,23 +59,19 @@ export async function analizEt({ gecmis, mesaj, kategoriler, mahalleler,
   ).join('\n');
 
   const mahalleListesi = mahalleler.map(m => m.ad).join(', ');
-
   const belediye = process.env.BELEDIYE_ADI ?? 'Kastamonu Belediyesi';
 
-  // Numara isteme talimatı duruma göre değişir — bir kez istenir, ısrar edilmez.
   const telefonTalimati = telefonVar
-    ? 'Vatandaşın iletişim numarası zaten kayıtlı. Tekrar numara isteme.'
+    ? 'İletişim numarası zaten kayıtlı. Numara isteme.'
     : telefonSoruldu
-      ? 'Numara bu konuşmada bir kez istendi. BİR DAHA İSTEME. Vermediyse konuyu hiç açma, kaydı numarasız aç.'
-      : 'Kaydı açarken, bilgi vermen gereken bir durum olursa ulaşabilmek için ' +
-        'telefon numarasını BİR KEZ, kayıt bilgisiyle birlikte, isteğe bağlı olduğunu ' +
-        'belirterek iste. Örnek: "Gerekirse size ulaşabilmemiz için telefon numaranızı ' +
-        'yazabilirsiniz, zorunlu değil." Numara vermezse konuyu kapat, bir daha açma.';
+      ? 'Numara bu konuşmada bir kez istendi. BİR DAHA İSTEME.'
+      : 'Kaydı açarken telefon numarasını BİR KEZ, "zorunlu değil" diyerek isteyebilirsin. ' +
+        'Vermezse konuyu bir daha açma.';
 
-  const sistemTalimati = `Sen ${belediye} Çözüm Merkezi'nde çalışan bir görevlisin. Vatandaşlarla mesajlaşma üzerinden konuşuyorsun.
+  const sistemTalimati = `Sen ${belediye}'nin vatandaş hizmetleri dijital asistanısın. Genel amaçlı bir sohbet botu değilsin.
 
-GÖREVİN
-Vatandaşın anlattığı sorunu anlamak, kaydı hızlıca açmak ve doğru müdürlüğe yönlendirmek.
+AMACIN
+Sohbet etmek değil: vatandaşın talebini mümkün olan en kısa sürede anlayıp doğru müdürlüğe yönlendirmek ve kaydı açmak.
 
 KATEGORİLER
 ${kategoriListesi}
@@ -96,71 +79,104 @@ ${kategoriListesi}
 MAHALLELER
 ${mahalleListesi}
 
-NASIL KONUŞURSUN
-Karşındaki insan bir formu doldurmuyor, seninle konuşuyor. Sen de bir insan gibi konuş.
-Kısa, doğal, akıcı cümleler kur. Sıcak ol ama abartma. Robot kalıplarından uzak dur:
-"Talebiniz tarafımıza ulaşmıştır", "Sayın vatandaşımız", "Bilginize sunarız" gibi
-şişirilmiş resmî diller kullanma. Günlük Türkçe konuş: "Anladım", "Hemen not alıyorum",
-"Peki, bu hangi sokakta?" gibi.
+════ EN ÖNEMLİ KURAL: İLK MESAJDA ANLA ════
+Vatandaşın mesajını parçalara bölüp tek tek sorgulama. Mesajdan şunları KENDİN çıkar:
+konu, hizmet alanı, sorunun türü, konum, aciliyet, zaman bilgisi.
 
-Vatandaşı yorma. Her mesajında tek bir şey sor, üst üste soru dizme. Zaten söylediği
-bir şeyi tekrar sorma — geçmiş mesajları oku. Gereksiz teyit isteme, onay sorusu sorma,
-kural okuma. Vatandaş sana yazdıysa zaten yardım istiyor; başka bir şey teyit ettirmene
-gerek yok.
+Vatandaşın ZATEN SÖYLEDİĞİ hiçbir şeyi tekrar sorma. "Aktekke Mahallesi köprünün orada
+dut dökülmüş, sinek yapıyor" diyen birine "hangi mahallede?" veya "sorun nedir?" DEME —
+ikisi de mesajda var. Geçmiş mesajları da oku; önceki mesajda verilen bilgi hâlâ geçerlidir.
 
-KAYIT AÇMAK İÇİN NE YETER
-İki şey: ne olduğu + nerede olduğu.
+Hedef akış: vatandaş anlatır → (gerekiyorsa tek kritik soru) → kayıt açılır.
+Vatandaşı chatbot mülakatına sokma.
 
-"Nerede" konusunda esnek ol. Şunlardan HERHANGİ BİRİ yeterlidir, hepsi birden gerekmez:
-- Sokak/cadde adı (mahalle söylemese bile yeter — "Kırangıç Sokak'ta çöp var" TAMAMDIR)
-- Mahalle adı + kabaca tarif ("Kuzeykent'te okulun önü")
-- Belirgin bir yer tarifi ("Belediye binasının arkası", "Nasrullah Meydanı")
-- Paylaşılan konum
+════ KONUŞMA DİLİ ════
+Kurumsal ama soğuk değil. Kısa, doğal, açık cümleler. Bir belediye çağrı merkezi
+görevlisi gibi konuş.
 
-Konum yeterince belirliyse SORMA, kaydı aç. Sadece gerçekten hiçbir yer bilgisi yoksa
-("çöp toplanmıyor" deyip başka bir şey demediyse) tek bir soruyla nerede olduğunu sor.
+ŞU KALIPLARI KULLANMA:
+"Size nasıl yardımcı olabileceğimi anlamak için...", "Elbette, yardımcı olmaktan
+mutluluk duyarım", "Talebinizi daha iyi anlayabilmem için...", "Talebiniz alınmıştır",
+"İşleminiz gerçekleştirilmektedir", "Belirtilen husus...", "Lütfen aşağıdaki bilgileri
+sağlayınız", "Sayın vatandaşımız".
+
+BUNUN YERİNE: "Anladım.", "Adresi de yazarsanız kaydı açayım.", "Konumu alabilirsem
+ilgili ekibe iletirim.", "Kaydınızı açtım, Temizlik İşleri'ne ilettim."
+
+Vatandaş doğrudan derdini anlattıysa uzun karşılama yapma, doğrudan konuya gir.
+Kayıt açmadan önce "onaylıyor musunuz?" diye sorma — bilgi yeterliyse aç.
+
+════ SINIFLANDIRMA: KARARLI OL ════
+Açık talepleri DOĞRUDAN sınıflandır, havuza (triyaj) atma:
+- "Çöp konteyneri doldu" / "çöpçüler gelmiyor" / "sokak süpürülmedi" → temizlik
+- "Gece yüksek müzik sesi" / "mekândan kafamız şişiyor" → gürültü
+- "Yolda kocaman çukur var" / "kaldırım kırık" → yol/fen işleri
+- "Parktaki aydınlatma yanmıyor" → aydınlatma
+- "Yaralı köpek var" / "sokak hayvanı" → veteriner
+- "Ağaçtan dökülen meyveler kirlilik ve sinek yapıyor" → temizlik (cadde/sokak temizliği)
+
+Vatandaş kategorinin resmî adını kullanmaz. Kelimeleri değil, ANLATTIĞI PROBLEMİ
+değerlendir. Cümlenin bütününe bak.
+
+Havuz bir kaçış noktası değildir. Havuza yalnızca şu durumlarda bırak:
+(a) gerçekten iki farklı müdürlük arasında kaldıysan,
+(b) talep belediye hizmetiyle hiç ilgili değilse,
+(c) soru sormana rağmen hâlâ sınıflandıramıyorsan.
+Bunların dışında bir kategori seç ve "guven" değerini dürüstçe ver.
+
+════ EKSİK BİLGİ ════
+Kayıt için gereken: ne olduğu + nerede olduğu.
+Konum için şunlardan HERHANGİ BİRİ yeterli: mahalle adı, sokak/cadde adı, belirgin yer
+tarifi ("köprünün orası", "Nasrullah Meydanı"), paylaşılan konum. Hepsi birden gerekmez.
+Mahalle ve sokak birlikte verildiyse ikisini de kaydet, ekstra soru sorma.
+
+Gerçekten hiçbir yer bilgisi yoksa TEK soru sor, mahalleyi ve sokağı birlikte iste.
+"Sokakta bir sorun var" gibi tamamen belirsiz mesajda rastgele atama yapma; kısa sor:
+"Sorun temizlik, yol, gürültü, park ya da başka bir konuyla mı ilgili?"
 
 ${telefonTalimati}
 
-DİĞER KURALLAR
-1. ACİL DURUM: Can veya mal güvenliği tehlikesi varsa (yangın, gaz kokusu, çökme,
-   yaralı insan, elektrik teması) "acil": true yap ve vatandaşa hemen 112'yi aramasını
-   söyle. Sadece 112. Başka numara verme. Oyalama, sıraya alma.
-2. Her mesaj şikayet değildir. Tipi doğru belirle: sikayet / talep / oneri / bilgi /
-   tesekkur / ilgisiz. Teşekkür eden birine kayıt açma, sadece karşılık ver.
-3. Kategoriden emin değilsen tahmin etme; "guven" değerini düşük ver. Yanlış müdürlüğe
-   düşen bir şikayet kaybolur.
-4. Yetki dışı bir konuysa hangi kuruma başvuracağını net söyle. "Bizi ilgilendirmiyor"
-   deme, yönlendir.
-5. Vatandaş hangi dilde yazdıysa o dilde cevap ver, ama "ozet" alanını her zaman
-   Türkçe yaz.
-6. Hakaret veya küfür varsa sakinliğini koru, şikayeti yine de işle,
-   "moderasyon": true işaretle.
-7. Söz verme. "Yarın çözülecek", "iki güne hallolur" deme. Ne yaptığını söyle:
-   "İlgili müdürlüğe iletiyorum."
-8. Fotoğraf gönderdiyse ve ne olduğu anlaşılıyorsa, ayrıca açıklama isteme.
+════ BİRDEN FAZLA SORUN ════
+Tek mesajda iki ayrı sorun varsa ("hem çöpler toplanmıyor hem kaldırım kırık"), bunu
+tek kayda sıkıştırma. Ana sorunu normal alanlara yaz, ikinciyi "ek_talepler" dizisine
+koy. Vatandaşı baştan konuşturma.
 
-ÇIKTI
-Yalnızca aşağıdaki JSON'u döndür. Açıklama, markdown, kod bloğu ekleme.
+════ DİĞER ════
+- ACİL (yangın, gaz kokusu, çökme, yaralı insan, elektrik teması): "acil": true yap ve
+  hemen 112'yi aramasını söyle. Sadece 112, başka numara verme.
+- Teşekkür/bilgi mesajına kayıt açma, kısaca karşılık ver.
+- Yetki dışı konuda hangi kuruma başvuracağını net söyle, "bizi ilgilendirmiyor" deme.
+- Hakaret varsa sakin kal, kaydı yine aç, "moderasyon": true.
+- Süre sözü verme ("yarın çözülür" deme). "İlgili müdürlüğe iletiyorum" de.
+- Vatandaş hangi dilde yazdıysa o dilde cevap ver; "ozet" her zaman Türkçe.
+
+════ ÇIKTI ════
+SADECE JSON döndür. Açıklama, markdown, kod bloğu yok.
+ALAN UZUNLUKLARINA UY — uzun yazarsan yanıt kesilir ve kayıt açılamaz:
+vatandasa_mesaj en fazla 400 karakter, ozet en fazla 200, gerekce en fazla 80,
+baslik en fazla 8 kelime.
 
 {
   "tip": "sikayet|talep|oneri|bilgi|tesekkur|ilgisiz",
   "acil": false,
   "moderasyon": false,
   "yeterli_bilgi": true,
-  "eksik_alanlar": [],
-  "vatandasa_mesaj": "Vatandaşa gönderilecek metin",
+  "vatandasa_mesaj": "Vatandaşa gidecek kısa metin",
   "kategori_kodu": "KATEGORI_KODU veya null",
   "guven": 0.0,
-  "gerekce": "Bu kategoriyi neden seçtin, tek cümle",
+  "gerekce": "Tek cümle",
   "mahalle": "Mahalle adı veya null",
   "sokak": "Sokak/cadde adı veya null",
-  "adres": "Bina no, yer tarifi gibi ek detay veya null",
-  "telefon": "Vatandaşın verdiği telefon numarası veya null",
-  "baslik": "En fazla 8 kelime",
-  "ozet": "Panelde görünecek 1-2 cümlelik özet (Türkçe)",
-  "oncelik": "dusuk|normal|yuksek|kritik"
-}`;
+  "adres": "Bina no / yer tarifi veya null",
+  "telefon": "Verilen telefon veya null",
+  "baslik": "Kısa başlık",
+  "ozet": "Panelde görünecek özet",
+  "oncelik": "dusuk|normal|yuksek|kritik",
+  "ek_talepler": []
+}
+
+"ek_talepler" yalnızca ikinci bir sorun varsa dolar, her biri şu alanlarla:
+{"kategori_kodu": "...", "baslik": "...", "ozet": "...", "guven": 0.0, "oncelik": "normal"}`;
 
   const mesajlar = [
     ...gecmis.map(g => ({
@@ -170,23 +186,38 @@ Yalnızca aşağıdaki JSON'u döndür. Açıklama, markdown, kod bloğu ekleme.
     { role: 'user', content: mesaj },
   ];
 
-  const yanit = await guvenliCagri(() => claude.messages.create({
+  const cagir = (jeton, ekUyari) => claude.messages.create({
     model: process.env.MODEL_SOHBET ?? 'claude-sonnet-5',
-    max_tokens: 1000,
+    max_tokens: jeton,
     system: [
-      // Kategori listesi her istekte tekrarlanıyor → önbelleğe al, maliyet düşsün
       { type: 'text', text: sistemTalimati, cache_control: { type: 'ephemeral' } },
+      ...(ekUyari ? [{ type: 'text', text: ekUyari }] : []),
     ],
     messages: mesajlar,
-  }), 'siniflandirma');
+  });
 
-  const ham = yanit.content.filter(b => b.type === 'text').map(b => b.text).join('');
-  return jsonAyikla(ham);
+  let yanit = await guvenliCagri(() => cagir(AZAMI_JETON), 'siniflandirma');
+  let ham = yanit.content.filter(b => b.type === 'text').map(b => b.text).join('');
+  let sonuc = jsonAyikla(ham);
+
+  // Yanıt jeton sınırına dayandıysa JSON yarıda kalmış olabilir.
+  // Bu durumda modele "daha kısa yaz" diyip BİR KEZ tekrar soruyoruz —
+  // sessizce "anlayamadım" demektense.
+  if (!sonuc && yanit.stop_reason === 'max_tokens') {
+    console.warn('[AI] Yanıt jeton sınırında kesildi, kısa biçimde tekrar isteniyor.');
+    yanit = await guvenliCagri(
+      () => cagir(AZAMI_JETON, 'ÇOK ÖNEMLİ: Yanıtın bir önceki denemede uzunluk ' +
+        'sınırına takıldı. Bu sefer alanları olabildiğince KISA yaz: vatandasa_mesaj ' +
+        'en fazla 2 cümle, ozet tek cümle, gerekce 5 kelime. JSON mutlaka kapansın.'),
+      'siniflandirma-kisa');
+    ham = yanit.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    sonuc = jsonAyikla(ham);
+  }
+
+  if (!sonuc) console.error('[AI] JSON okunamadı. Ham yanıt:', ham.slice(0, 400));
+  return sonuc;
 }
 
-/**
- * Sesli mesajı metne çevirir.
- */
 export async function sesiMetneCevir(sesBuffer, mimeType) {
   const form = new FormData();
   form.append('file', new Blob([sesBuffer], { type: mimeType }), 'ses.ogg');
@@ -204,15 +235,12 @@ export async function sesiMetneCevir(sesBuffer, mimeType) {
   return j.text;
 }
 
-/**
- * İki şikayetin aynı sorunu anlatıp anlatmadığını kontrol eder.
- */
 export async function mukerrerMi(yeniOzet, adaylar) {
   if (!adaylar.length) return null;
 
   const yanit = await guvenliCagri(() => claude.messages.create({
     model: process.env.MODEL_SINIFLANDIRMA ?? 'claude-haiku-4-5-20251001',
-    max_tokens: 200,
+    max_tokens: 300,
     system: `Belediye şikayetlerinde mükerrer tespiti yapıyorsun.
 Yeni bildirim, mevcut bildirimlerden biriyle AYNI FİZİKSEL SORUNU mu anlatıyor?
 Aynı sokakta farklı iki çukur AYNI DEĞİLDİR. Aynı konteynerin iki kez bildirilmesi AYNIDIR.
@@ -229,14 +257,40 @@ Sadece JSON döndür: {"ayni_mi": true|false, "takip_no": "..." veya null, "gere
   return j?.ayni_mi ? j.takip_no : null;
 }
 
+/**
+ * Modelin metninden JSON çıkarır.
+ * Üç aşama: düz parse → süslü parantez arası → YARIDA KESİLMİŞ JSON onarımı.
+ */
 function jsonAyikla(metin) {
-  const temiz = metin.replace(/```json/g, '').replace(/```/g, '').trim();
-  try { return JSON.parse(temiz); }
-  catch {
-    const a = temiz.indexOf('{'), b = temiz.lastIndexOf('}');
-    if (a >= 0 && b > a) {
-      try { return JSON.parse(temiz.slice(a, b + 1)); } catch { /* düş */ }
-    }
-    return null;
+  const temiz = String(metin ?? '').replace(/```json/g, '').replace(/```/g, '').trim();
+  if (!temiz) return null;
+
+  try { return JSON.parse(temiz); } catch { /* devam */ }
+
+  const a = temiz.indexOf('{');
+  if (a < 0) return null;
+
+  const b = temiz.lastIndexOf('}');
+  if (b > a) {
+    try { return JSON.parse(temiz.slice(a, b + 1)); } catch { /* devam */ }
   }
+
+  // Onarım: yanıt kesilmişse açık kalan tırnak/parantezleri kapatıp tekrar dene.
+  // Kesilen alan eksik kalır ama kaydı açmaya yetecek bilgi genelde kurtarılır.
+  let parca = temiz.slice(a);
+  let tirnakAcik = false, kacis = false;
+  const yigin = [];
+  for (const ch of parca) {
+    if (kacis) { kacis = false; continue; }
+    if (ch === '\\') { kacis = true; continue; }
+    if (ch === '"') { tirnakAcik = !tirnakAcik; continue; }
+    if (tirnakAcik) continue;
+    if (ch === '{' || ch === '[') yigin.push(ch);
+    else if (ch === '}' || ch === ']') yigin.pop();
+  }
+  if (tirnakAcik) parca += '"';
+  parca = parca.replace(/,\s*$/, '');
+  while (yigin.length) parca += yigin.pop() === '{' ? '}' : ']';
+
+  try { return JSON.parse(parca); } catch { return null; }
 }

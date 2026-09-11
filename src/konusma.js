@@ -206,9 +206,31 @@ export async function mesajIsle(gelen) {
   }
 
   if (!analiz) {
+    // Model yanıtı okunamadı (çoğunlukla yanıt uzunluk sınırında kesilmiştir).
+    // Vatandaşa aynı cümleyi tekrar tekrar bastırmak yerine: ilk seferde bir
+    // kez daha yazmasını isteriz, İKİNCİ kez olursa kaydı ham metinle açıp
+    // triyaja bırakırız. Talebi kaybetmek, yanlış sınıflandırmaktan kötüdür.
+    const oncekiHata = gecmis.filter(g =>
+      g.rol === 'ai' && /tam anlayamadım/i.test(g.metin ?? '')).length;
+
+    if (oncekiHata === 0) {
+      await yanitla(vatandas, gelen,
+        'Mesajınızı tam anlayamadım, bir daha yazar mısınız?');
+      return;
+    }
+
+    const yedek = await kayitOlustur({
+      vatandas, metin, medyaYolu, gelen, kategoriler, mahalleler,
+      analiz: {
+        tip: 'sikayet', acil: false, guven: 0,
+        gerekce: 'Model yanıtı okunamadı — insan sınıflandırması bekliyor.',
+        ozet: (metin ?? '').slice(0, 300), baslik: (metin ?? '').slice(0, 80),
+        kategori_kodu: null, mahalle: null, sokak: null, adres: null, oncelik: 'normal',
+      },
+    });
     await yanitla(vatandas, gelen,
-      'Mesajınızı tam anlayamadım, tekrar yazar mısınız? Sorunun ne olduğunu ve ' +
-      'nerede olduğunu yazmanız yeterli.');
+      `Kaydınızı aldım, takip numaranız ${yedek.takip_no}. ` +
+      `İlgili müdürlüğe yönlendirilmek üzere değerlendirmeye alındı.`);
     return;
   }
 
@@ -287,13 +309,41 @@ export async function mesajIsle(gelen) {
   const kayit = await kayitOlustur({ vatandas, analiz, metin, medyaYolu, gelen,
                                      kategoriler, mahalleler, mahalle });
 
+  // ---- 10b. Aynı mesajda ikinci bir sorun varsa onu da kaydet ---------
+  // Örn: "hem çöpler toplanmıyor hem kaldırım kırık" → iki ayrı kayıt.
+  const ekKayitlar = [];
+  for (const ek of (analiz.ek_talepler ?? []).slice(0, 3)) {
+    try {
+      const ekKayit = await kayitOlustur({
+        vatandas, metin, medyaYolu: null, gelen, kategoriler, mahalleler, mahalle,
+        analiz: {
+          ...analiz,
+          kategori_kodu: ek.kategori_kodu ?? null,
+          baslik: ek.baslik ?? analiz.baslik,
+          ozet: ek.ozet ?? analiz.ozet,
+          guven: ek.guven ?? analiz.guven,
+          oncelik: ek.oncelik ?? 'normal',
+          ek_talepler: [],
+        },
+      });
+      ekKayitlar.push(ekKayit);
+      const ekKategori = kategoriler.find(k => k.kod === ek.kategori_kodu);
+      if (!ekKategori?.yetki_disi) await birimeBildir(ekKayit);
+    } catch (hata) {
+      console.error('[UYARI] Ek talep kaydedilemedi:', hata.message);
+    }
+  }
+
   // ---- 11. Vatandaşa dön ---------------------------------------------
   if (kategori?.yetki_disi) {
     await yanitla(vatandas, gelen,
       `${kategori.yonlendirme_metni}\n\nKaydınızı yine de açtım, takip numaranız ${kayit.takip_no}.`);
   } else {
+    const ekNot = ekKayitlar.length
+      ? `\nİkinci konu için ayrı kayıt: ${ekKayitlar.map(k => k.takip_no).join(', ')}`
+      : '';
     await yanitla(vatandas, gelen, analiz.vatandasa_mesaj?.trim()
-      ? `${analiz.vatandasa_mesaj}\n\nTakip numaranız: ${kayit.takip_no}`
+      ? `${analiz.vatandasa_mesaj}\n\nTakip numaranız: ${kayit.takip_no}${ekNot}`
       : `Bildiriminizi aldım, ${kayit.birim_adi ?? 'ilgili müdürlüğe'} iletiyorum.\n\n` +
         `Takip numaranız: ${kayit.takip_no}\n` +
         `Durumunu öğrenmek için bu numarayı bana yazmanız yeterli.`);
